@@ -333,7 +333,7 @@ namespace hpx {
       , on_stop_func_(global_on_stop_func)
       , on_error_func_(global_on_error_func)
       , result_(0)
-      , main_pool_notifier_()
+      , main_pool_notifier_(main_pool_notifier)
       , main_pool_(1, main_pool_notifier_, "main_pool")
 #ifdef HPX_HAVE_IO_POOL
       , io_pool_notifier_(io_pool_notifier)
