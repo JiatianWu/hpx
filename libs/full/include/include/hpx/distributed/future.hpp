@@ -13,6 +13,6 @@
 #include <hpx/async_distributed/detail/async_colocated_callback.hpp>
 #include <hpx/lcos/promise.hpp>
 
-namespace hpx { namespace distribtued {
+namespace hpx { namespace distributed {
     using hpx::lcos::promise;
-}}    // namespace hpx::distribtued
+}}    // namespace hpx::distributed
