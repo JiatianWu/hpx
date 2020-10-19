@@ -3,12 +3,11 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef BLOCK_MATRIX_HH
-#define BLOCK_MATRIX_HH
+#pragma once
 
-#include "defs.hh"
-#include "matrix.hh"
-#include "matrix_hpx.hh"
+#include "defs.hpp"
+#include "matrix.hpp"
+#include "matrix_hpx.hpp"
 
 #include <hpx/hpx.hpp>
 
@@ -120,5 +119,3 @@ struct block_matrix_t {
 };
 
 std::ostream& operator<<(std::ostream& os, const block_matrix_t& a);
-
-#endif // #ifndef BLOCK_MATRIX_HH

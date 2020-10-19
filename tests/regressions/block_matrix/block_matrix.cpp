@@ -5,9 +5,9 @@
 
 #include <hpx/hpx.hpp>
 
-#include "block_matrix.hh"
+#include "block_matrix.hpp"
 
-#include "matrix.hh"
+#include "matrix.hpp"
 
 #include <hpx/hpx.hpp>
 #include <hpx/include/components.hpp>

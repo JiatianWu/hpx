@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "defs.hh"
+#include "defs.hpp"
 
 #include <hpx/serialization/serialize.hpp>
 #include <hpx/serialization/shared_ptr.hpp>

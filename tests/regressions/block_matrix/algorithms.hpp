@@ -3,11 +3,10 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef ALGORITHMS_HH
-#define ALGORITHMS_HH
+#pragma once
 
-#include "block_matrix.hh"
-#include "matrix.hh"
+#include "block_matrix.hpp"
+#include "matrix.hpp"
 
 
 
@@ -71,4 +70,3 @@ void gemm(bool transa, bool transb,
           double alpha, const block_matrix_t& a, const block_matrix_t& b,
           double beta, block_matrix_t& c);
 
-#endif  // #ifndef ALGORITHMS_HH

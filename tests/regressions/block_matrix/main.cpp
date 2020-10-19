@@ -5,8 +5,8 @@
 
 #include <hpx/hpx.hpp>
 
-#include "defs.hh"
-#include "tests.hh"
+#include "defs.hpp"
+#include "tests.hpp"
 
 #include <hpx/hpx.hpp>
 #include <hpx/hpx_init.hpp>

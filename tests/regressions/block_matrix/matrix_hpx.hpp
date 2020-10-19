@@ -3,10 +3,9 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef MATRIX_HPX_HH
-#define MATRIX_HPX_HH
+#pragma once
 
-#include "matrix.hh"
+#include "matrix.hpp"
 
 #include <hpx/hpx.hpp>
 #include <hpx/include/components.hpp>
@@ -218,5 +217,3 @@ struct matrix_t_client:
     return hpx::async(matrix_t_server::scal_action(), get_id(), alpha);
   }
 };
-
-#endif // #ifndef MATRIX_HPX_HH

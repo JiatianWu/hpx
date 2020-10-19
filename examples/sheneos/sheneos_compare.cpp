@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "sheneos/interpolator.hpp"
-#include "fname.h"
+#include "fname.hpp"
 
 int omp_thread_count() {
     int n = 0;

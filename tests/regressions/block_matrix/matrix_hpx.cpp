@@ -5,9 +5,9 @@
 
 #include <hpx/hpx.hpp>
 
-#include "matrix_hpx.hh"
+#include "matrix_hpx.hpp"
 
-#include "algorithms.hh"
+#include "algorithms.hpp"
 
 
 

@@ -3,8 +3,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 
-#ifndef DEFS_HH
-#define DEFS_HH
+#pragma once
 
 #include <cstddef>
 #include <cstdlib>
@@ -32,5 +31,3 @@ std::string mkstr(const T& x)
   os << x;
   return os.str();
 }
-
-#endif  // #ifndef DEFS_HH
