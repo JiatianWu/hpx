@@ -147,17 +147,77 @@ namespace hpx { namespace lcos { namespace detail {
     {
     };
 
+    template <typename Policy, typename Func, typename Futures>
+    struct dataflow_future_base
+    {
+        using future_base_type = hpx::lcos::detail::future_data<
+            typename hpx::traits::future_traits<typename detail::
+                    dataflow_return<Policy, Func, Futures>::type>::type>;
+
+        template <typename Frame, typename Futures_>
+        static void execute(Frame&& frame,
+            typename std::decay<Func>::type&& func, std::false_type,
+            Futures_&& futures)
+        {
+            std::exception_ptr p;
+
+            try
+            {
+                frame->set_data(util::invoke_fused(
+                    std::forward<Func>(func), std::forward<Futures_>(futures)));
+                return;
+            }
+            catch (...)
+            {
+                p = std::current_exception();
+            }
+
+            // The exception is set outside the catch block since
+            // set_exception may yield. Ending the catch block on a
+            // different worker thread than where it was started may lead
+            // to segfaults.
+            frame->set_exception(std::move(p));
+        }
+
+        template <typename Frame, typename Futures_>
+        static void execute(Frame&& frame,
+            typename std::decay<Func>::type&& func, std::true_type,
+            Futures_&& futures)
+        {
+            std::exception_ptr p;
+
+            try
+            {
+                util::invoke_fused(
+                    std::forward<Func>(func), std::forward<Futures_>(futures));
+
+                frame->set_data(util::unused_type());
+                return;
+            }
+            catch (...)
+            {
+                p = std::current_exception();
+            }
+
+            // The exception is set outside the catch block since
+            // set_exception may yield. Ending the catch block on a
+            // different worker thread than where it was started may lead
+            // to segfaults.
+            frame->set_exception(std::move(p));
+        }
+    };
+
     ///////////////////////////////////////////////////////////////////////////
     template <typename Policy, typename Func, typename Futures>
     struct dataflow_frame    //-V690
-      : hpx::lcos::detail::future_data<typename hpx::traits::future_traits<
-            typename detail::dataflow_return<Policy, Func,
-                Futures>::type>::type>
+      : dataflow_future_base<typename std::decay<Policy>::type, Func,
+            Futures>::future_base_type
     {
         using type =
             typename detail::dataflow_return<Policy, Func, Futures>::type;
         using result_type = typename hpx::traits::future_traits<type>::type;
-        using base_type = hpx::lcos::detail::future_data<result_type>;
+        using base_type = typename dataflow_future_base<Policy, Func,
+            Futures>::future_base_type;
 
         typedef std::is_void<result_type> is_void;
 
@@ -204,26 +264,9 @@ namespace hpx { namespace lcos { namespace detail {
         template <typename Futures_>
         HPX_FORCEINLINE void execute(std::false_type, Futures_&& futures)
         {
-            std::exception_ptr p;
-
-            try
-            {
-                Func func = std::move(func_);
-
-                this->set_data(util::invoke_fused(
-                    std::move(func), std::forward<Futures_>(futures)));
-                return;
-            }
-            catch (...)
-            {
-                p = std::current_exception();
-            }
-
-            // The exception is set outside the catch block since
-            // set_exception may yield. Ending the catch block on a
-            // different worker thread than where it was started may lead
-            // to segfaults.
-            this->set_exception(std::move(p));
+            dataflow_future_base<Policy, Func, Futures>::execute(this,
+                std::move(func_), std::false_type{},
+                std::forward<Futures_>(futures));
         }
 
         /// Passes the futures into the evaluation function and
@@ -231,28 +274,9 @@ namespace hpx { namespace lcos { namespace detail {
         template <typename Futures_>
         HPX_FORCEINLINE void execute(std::true_type, Futures_&& futures)
         {
-            std::exception_ptr p;
-
-            try
-            {
-                Func func = std::move(func_);
-
-                util::invoke_fused(
-                    std::move(func), std::forward<Futures_>(futures));
-
-                this->set_data(util::unused_type());
-                return;
-            }
-            catch (...)
-            {
-                p = std::current_exception();
-            }
-
-            // The exception is set outside the catch block since
-            // set_exception may yield. Ending the catch block on a
-            // different worker thread than where it was started may lead
-            // to segfaults.
-            this->set_exception(std::move(p));
+            dataflow_future_base<Policy, Func, Futures>::execute(this,
+                std::move(func_), std::true_type{},
+                std::forward<Futures_>(futures));
         }
 
         ///////////////////////////////////////////////////////////////////////

@@ -23,6 +23,36 @@
 std::atomic<bool> done{false};
 
 ///////////////////////////////////////////////////////////////////////////////
+// Note that this custom future_data is not strictly required for out-of-band
+// signaling.
+template <typename R, typename Allocator = hpx::util::internal_allocator<>>
+struct custom_future_data
+  : hpx::lcos::detail::future_data_allocator<R, Allocator>
+{
+    HPX_NON_COPYABLE(custom_future_data);
+
+    using init_no_addref =
+        typename hpx::lcos::detail::future_data_allocator<void,
+            Allocator>::init_no_addref;
+
+    using other_allocator = typename std::allocator_traits<
+        Allocator>::template rebind_alloc<custom_future_data>;
+
+    custom_future_data() {}
+
+    custom_future_data(init_no_addref no_addref)
+      : hpx::lcos::detail::future_data_allocator<void, Allocator>(
+            no_addref, Allocator{})
+    {
+    }
+
+    custom_future_data(init_no_addref no_addref, other_allocator const& alloc)
+      : hpx::lcos::detail::future_data_allocator<void, Allocator>(
+            no_addref, alloc)
+    {
+    }
+};
+
 struct external_future_executor
 {
     // This is not actually called by dataflow, but it is used for the return
@@ -41,26 +71,95 @@ struct external_future_executor
     void post(
         hpx::lcos::detail::dataflow_finalization<A>&& f, hpx::tuple<Ts...>&& t)
     {
-        // This wrapping apply is optional, but both with and without it the
-        // behaviour is slightly wrong. Without the wrapping apply dataflow
-        // becomes blocking with ready arguments to dataflow. With the wrapping
-        // apply the future is set to ready too early.
-        hpx::apply([f = std::move(f), t = std::move(t)]() {
-            // This sets the dataflow future to ready immediately when the
-            // user-provided function returns. There is no place to wait for the
-            // completion of the underlying operation.
-            hpx::invoke(f, std::move(t));
-            std::cout << "dataflow finalization: asynchronous operation "
-                         "spawned and dataflow future set to ready\n"
-                      << std::flush;
-
-            // We can wait for the completion here, but it is of little use.
-            hpx::util::yield_while([]() { return !done; });
-            std::cout << "dataflow finalization: asynchronous operation done\n"
-                      << std::flush;
-        });
+        std::cout << "dataflow finalization: calling post\n" << std::flush;
+        hpx::invoke(f, std::move(t));
+        std::cout << "dataflow finalization: called post\n" << std::flush;
     }
 };
+
+namespace hpx { namespace lcos { namespace detail {
+    template <typename Func, typename Futures>
+    struct dataflow_future_base<external_future_executor, Func, Futures>
+    {
+        // NOTE: Customizing this is not strictly necessary. external_
+        //using future_base_type =
+        //    hpx::lcos::detail::future_data<typename hpx::traits::future_traits<
+        //        typename detail::dataflow_return<external_future_executor, Func,
+        //            Futures>::type>::type>;
+        using future_base_type =
+            custom_future_data<typename hpx::traits::future_traits<
+                typename detail::dataflow_return<external_future_executor, Func,
+                    Futures>::type>::type>;
+
+        template <typename Frame, typename Futures_>
+        static void execute(Frame&& frame,
+            typename std::decay<Func>::type&& func, std::false_type,
+            Futures_&& futures)
+        {
+            std::exception_ptr p;
+
+            try
+            {
+                auto&& r = util::invoke_fused(
+                    std::forward<Func>(func), std::forward<Futures_>(futures));
+
+                // Signal completion from another thread/task.
+                hpx::intrusive_ptr<typename std::remove_pointer<
+                    typename std::decay<Frame>::type>::type>
+                    frame_p(frame);
+                hpx::apply([frame_p = std::move(frame_p), r = std::move(r)]() {
+                    hpx::util::yield_while([]() { return !done; });
+                    frame_p->set_data(std::move(r));
+                });
+                return;
+            }
+            catch (...)
+            {
+                p = std::current_exception();
+            }
+
+            // The exception is set outside the catch block since
+            // set_exception may yield. Ending the catch block on a
+            // different worker thread than where it was started may lead
+            // to segfaults.
+            frame->set_exception(std::move(p));
+        }
+
+        template <typename Frame, typename Futures_>
+        static void execute(Frame&& frame,
+            typename std::decay<Func>::type&& func, std::true_type,
+            Futures_&& futures)
+        {
+            std::exception_ptr p;
+
+            try
+            {
+                util::invoke_fused(
+                    std::forward<Func>(func), std::forward<Futures_>(futures));
+
+                // Signal completion from another thread/task.
+                hpx::intrusive_ptr<typename std::remove_pointer<
+                    typename std::decay<Frame>::type>::type>
+                    frame_p(frame);
+                hpx::apply([frame_p = std::move(frame_p)]() {
+                    hpx::util::yield_while([]() { return !done; });
+                    frame_p->set_data(util::unused_type());
+                });
+                return;
+            }
+            catch (...)
+            {
+                p = std::current_exception();
+            }
+
+            // The exception is set outside the catch block since
+            // set_exception may yield. Ending the catch block on a
+            // different worker thread than where it was started may lead
+            // to segfaults.
+            frame->set_exception(std::move(p));
+        }
+    };
+}}}    // namespace hpx::lcos::detail
 
 namespace hpx { namespace parallel { namespace execution {
     template <>
